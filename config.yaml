@@ -1,0 +1,76 @@
+db:
+  dbtype: sqlite
+  dsn: m7s.db
+
+global:
+  loglevel: debug
+
+  location:
+    # Direct mapping for full .mp4 URLs
+    "^/mp4/(.*\\.mp4)$": "/recordings/mp4/$1"
+
+    # Optional: add this if you want to treat /mp4/xyz as /xyz.mp4
+    "^/mp4/(.*[^/])$": "/recordings/mp4/$1.mp4"
+
+    # Serve folder listings if requested path is a directory
+    "^/mp4/(.*)$": "/recordings/mp4/$1"
+
+  http:
+    listenaddr: :8080
+    cors: true  # Optional if using browser frontend
+
+    # username: admin
+    # password: 7410258
+    # listentlsaddr: :8081
+    # certfile: ./fullchain.pem
+    # keyfile: ./privkey.pem
+    # cors: true
+
+  admin:
+    enablelogin: false
+
+srt:
+  listenaddr: :6000
+  passphrase: foobarfoobar
+
+snap:
+  enable: false
+  ismanualmodesave: true
+  watermark:
+    text: "Monibuca $T{2006-01-02 15:04:05.000}"
+    fontpath: "/System/Library/Fonts/STHeiti Light.ttc"
+    fontsize: 16
+    fontspacing: 2
+    fontcolor: "rgba(255,165,0,1)"
+    offsetx: 10
+    offsety: 10
+  mode: 2
+  timeinterval: 3s
+  savepath: "./snap"
+  iframeinterval: 3
+  querytimedelta: 3
+  filter: "^live/.*"
+  onpub:
+    transform:
+      .*: $0
+
+rtsp:
+  tcp:
+    listenaddr: :554
+    lisenaddrtls: :8554
+    # certfile: ./media.crt
+    # keyfile: ./media.key
+  pull:
+    DVR/RTSP-ATPL-910419-AIPTZ: rtsp://admin:@RTSP-ATPL-910419-AIPTZ.torqueverse.dev:419/ch0_0.264
+
+mp4:
+  enable: true
+  # onsub:
+  #   pull:
+  #     ^vod(\d)/(.+)$: DVR/$2
+  onpub:
+    record:
+      ^(DVR/.+)$:
+        fragment: 30s
+        filepath: recordings/$1
+
