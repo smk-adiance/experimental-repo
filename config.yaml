@@ -1,76 +1,124 @@
-db:
-  dbtype: sqlite
-  dsn: m7s.db
-
 global:
-  loglevel: debug
-
   location:
-    # Direct mapping for full .mp4 URLs
-    "^/mp4/(.*\\.mp4)$": "/recordings/mp4/$1"
-
-    # Optional: add this if you want to treat /mp4/xyz as /xyz.mp4
-    "^/mp4/(.*[^/])$": "/recordings/mp4/$1.mp4"
-
-    # Serve folder listings if requested path is a directory
-    "^/mp4/(.*)$": "/recordings/mp4/$1"
-
-  http:
-    listenaddr: :8080
-    cors: true  # Optional if using browser frontend
-
-    # username: admin
-    # password: 7410258
-    # listentlsaddr: :8081
-    # certfile: ./fullchain.pem
-    # keyfile: ./privkey.pem
-    # cors: true
-
+    "^/hdl/(.*)": "/flv/$1"
+  loglevel: debug
   admin:
     enablelogin: false
-
 srt:
   listenaddr: :6000
   passphrase: foobarfoobar
+gb28181:
+  enable: false
+  autoinvite: false
+  mediaip: 192.168.1.21  #流媒体收流IP
+  sipip: 192.168.1.21  #SIP通讯IP
+  sip:
+    listenaddr:
+          - udp::5060
+  # pull:
+  #   live/test: dump/34020000001320000001
+  onsub:
+    pull:
+      ^\d{20}/\d{20}$: $0
+      ^gb_\d+/(.+)$: $1
+#      .* : $0
+mp4:
+  # enable: false
+  # publish:
+  #   delayclosetimeout: 3s
+  onpub:
+    record:
+      ^live/.+:
+          fragment: 10s
+          filepath: record/$0
+          # type: fmp4
+  # pull:
+  #   live/test: /Users/dexter/Movies/1744963190.mp4
+  onsub:
+    pull:
+      ^vod_mp4_\d+/(.+)$: $1
+cascadeserver:
+  quic:
+    listenaddr: :44944
+# llhls:
+#   onpub:
+#     transform:
+#       .* : 1s x 7
+flv:
+  # onpub:
+  #   record:
+  #     ^live/.+:
+  #         fragment: 1m
+  #         filepath: record/$0
+  publish:
+    delayclosetimeout: 3s
+  onsub:
+    pull:
+      ^vod_flv_\d+/(.+)$: $1
+#   pull:
+#     live/test: https://livecb.alicdn.com/mediaplatform/afb241b3-408c-42dd-b665-04d22b64f9df.flv?auth_key=1734575216-0-0-c62721303ce751c8e5b2c95a2ec242a0&F=pc&source=34675810_null_live_detail&ali_flv_retain=2
+hls:
+  # onsub:
+  #   pull:
+  #     ^vod_hls_\d+/(.+)$: $1
+  # pull:
+  #   live/test: https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/gear3/prog_index.m3u8
+#   onpub:
+#     transform:
+#       .* : 5s x 3
+#rtsp:
+#  pull:
+    # live/test: rtsp://admin:1qaz2wsx3EDC@giroro.tpddns.cn:1554/Streaming/Channels/101
+#    live/test: rtsp://admin:1qaz2wsx3EDC@localhost:8554/live/test
+rtsp:
+  pull:
+    live/test: rtsp://admin:@RTSP-ATPL-910172-AIPTZ.torqueverse.dev:172/ch0_0.264
 
 snap:
   enable: false
-  ismanualmodesave: true
-  watermark:
-    text: "Monibuca $T{2006-01-02 15:04:05.000}"
-    fontpath: "/System/Library/Fonts/STHeiti Light.ttc"
-    fontsize: 16
-    fontspacing: 2
-    fontcolor: "rgba(255,165,0,1)"
-    offsetx: 10
-    offsety: 10
-  mode: 2
-  timeinterval: 3s
-  savepath: "./snap"
-  iframeinterval: 3
-  querytimedelta: 3
-  filter: "^live/.*"
   onpub:
     transform:
-      .*: $0
+      .+:
+        output:
+          -   watermark:
+                text: "abcd"              # 水印文字内容
+                fontpath: /Users/dexter/Library/Fonts/MapleMono-NF-CN-Medium.ttf          # 水印字体文件路径
+                fontcolor: "rgba(255,165,0,1)" # 水印字体颜色，支持rgba格式
+                fontsize: 36          # 水印字体大小
+                offsetx: 0           # 水印位置X偏移
+                offsety: 0           # 水印位置Y偏移
+              timeinterval: 1s   # 截图时间间隔
+              savepath: "snaps"  # 截图保存路径
+              iframeinterval: 3  # 间隔多少帧截图
+              querytimedelta: 3  # 查询截图时允许的最大时间差（秒）
 
-rtsp:
-  tcp:
-    listenaddr: :554
-    lisenaddrtls: :8554
-    # certfile: ./media.crt
-    # keyfile: ./media.key
-  pull:
-    DVR/RTSP-ATPL-910419-AIPTZ: rtsp://admin:@RTSP-ATPL-910419-AIPTZ.torqueverse.dev:419/ch0_0.264
-
-mp4:
+crypto:
   enable: true
-  # onsub:
-  #   pull:
-  #     ^vod(\d)/(.+)$: DVR/$2
+  isstatic: false
+  algo: aes_ctr # 加密算法 支持 aes_ctr xor_c
+  encryptlen: 1024
+  secret:
+    key: your key
+    iv: your iv
   onpub:
-    record:
-      ^(DVR/.+)$:
-        fragment: 30s
-        filepath: recordings/$1
-
+    transform:
+      .* : $0
+onvif:
+  enable: false
+  discoverinterval: 3 # 发现设备的间隔，单位秒，默认30秒，建议比rtsp插件的重连间隔大点
+  autopull: true
+  autoadd: true
+  interfaces: # 设备发现指定网卡，以及该网卡对应IP段的全局默认账号密码，支持多网卡
+    - interfacename: 以太网  # 网卡名称 或者"以太网" "eth0"等，使用ipconfig 或者 ifconfig 查看网卡名称 
+      username: admin # onvif 账号
+      password: admin # onvif 密码
+    # - interfacename: WLAN 2 # 网卡2
+    #   username: admin
+    #   password: admin
+  # devices: # 可以给指定设备配置单独的密码
+  #   - ip: 192.168.1.1
+  #     username: admin
+  #     password: '123'
+  #   - ip: 192.168.1.2
+  #     username: admin
+  #     password: '456'
